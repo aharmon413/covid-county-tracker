@@ -2,13 +2,14 @@ from datetime import datetime, timedelta
 import sqlite3
 
 #-----------------------------------------------------------------------------#
+
 today = datetime.today().date()
 yesterday = today - timedelta(days=1)
 covid_data_conn = sqlite3.connect('covid_data.sqlite')
 covid_data_cur = covid_data_conn.cursor()
 
 def checkDate():
-    # Get yesterday and today's dates, and check if all data is up to date.
+    # Compare yesterday's date and check if all data is up to date.
     # Note that the covid data's most recent update is always yesterday's numbers,
     # not today's, because they change frequently throughout the day
     # and aren't posted until the day has passed.
@@ -31,8 +32,9 @@ def addCounty(county_state):
         return None
 
     covid_data_cur.execute('''CREATE TABLE IF NOT EXISTS counties
-    (fips TEXT UNIQUE, county TEXT, date TEXT, cases INTEGER,
-     deaths INTEGER)''')
+    (fips TEXT UNIQUE, county TEXT, date TEXT, latest_cases INTEGER DEFAULT 0,
+     latest_deaths INTEGER DEFAULT 0, previous_cases INTEGER DEFAULT 0,
+     previous_deaths INTEGER DEFAULT 0)''')
 
     try:
         covid_data_cur.execute('''INSERT INTO counties (fips, county)
@@ -67,11 +69,11 @@ if __name__ == '__main__':
 
     needsUpdate = checkDate()
     if needsUpdate:
-        print(f"\nToday is {today.strftime('%x')}. Some data needs to be updated.")
+        print(f"\nToday is {today.strftime('%x')}. Some data needs to be updated.\n")
     elif needsUpdate == False:
-        print(f"\nToday is {today.strftime('%x')}. All data is up to date.")
+        print(f"\nToday is {today.strftime('%x')}. All data is up to date.\n")
     else:
-        print(f"\nToday is {today.strftime('%x')}. Unable to retrieve date of last update.")
+        print(f"\nToday is {today.strftime('%x')}. Unable to retrieve date of last update.\n")
 
     while True:
         print(commands)
@@ -90,8 +92,12 @@ if __name__ == '__main__':
             deleteCounty(del_county)
             continue
         elif inp == '3':
-            covid_data_cur.execute('''SELECT county FROM counties
-             ORDER BY county ASC''')
+            try:
+                covid_data_cur.execute('''SELECT county FROM counties
+                ORDER BY county ASC''')
+            except:
+                print('\nNo counties are being tracked right now.\n')
+                continue
             counties = covid_data_cur.fetchall()
             print('\nThe following counties are being tracked:')
             for county in counties: print(f'* {county[0]}')
